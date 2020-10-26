@@ -25,34 +25,7 @@ module.exports = class KosuzuCommand extends Command {
 
             let imageObject = this.watchedIds[messageReaction.message.id];
 
-            if(messageReaction.emoji.name === '⬅️') {
-                imageObject['curr'] = imageObject['curr']-1;
-                if(imageObject['curr'] === 0) {
-                    imageObject['curr'] = 1;
-                    return;
-                }
-                let reversesplit = imageObject['file'].split("/").reverse();
-                let filename = reversesplit[0];
-                let re = /[0-9]-/;
-                filename = filename.replace(re, `${imageObject['curr']}-`);
-                reversesplit[0] = filename;
-                reversesplit = reversesplit.reverse();
-                imageObject['file'] = reversesplit.join('/');
-                console.log(filename);
-                let newembed = new MessageEmbed()
-                .setColor('#f24724')
-                .attachFiles([imageObject['file']])
-                .setImage(`attachment://${filename}`);
-                messageReaction.message.embed(newembed)
-                .then(async msg => {
-                    this.watchedIds[msg.id] = {file: imageObject['file'], curr: imageObject['curr'], length: imageObject['length']};
-                    await msg.react('⬅️');
-                    await msg.react('➡️');
-                    delete this.watchedIds[messageReaction.message.id];
-                })
-                .catch(console.error);
-            }
-            else if(messageReaction.emoji.name === '➡️') {
+            if(messageReaction.emoji.name === '➡️') {
                 imageObject['curr'] = imageObject['curr']+1;
                 if(imageObject['curr'] === imageObject['length']+1) {
                     imageObject['curr'] = imageObject['length'];
@@ -73,7 +46,6 @@ module.exports = class KosuzuCommand extends Command {
                 messageReaction.message.embed(newembed)
                 .then(async msg => {
                     this.watchedIds[msg.id] = {file: imageObject['file'], curr: imageObject['curr'], length: imageObject['length']};
-                    await msg.react('⬅️');
                     await msg.react('➡️');
                     delete this.watchedIds[messageReaction.message.id];
                 })
@@ -90,7 +62,7 @@ module.exports = class KosuzuCommand extends Command {
     kosuzu(message) {
         let filenames = fs.readdirSync(path.join(__dirname, 'Kosuzus'));
         let filename = filenames[Math.floor(Math.random()*filenames.length)];
-
+        console.log(filenames);
         if(!filename.includes("-")) {
             return [path.join(__dirname, "Kosuzus/", filename)];
         }
@@ -116,6 +88,7 @@ module.exports = class KosuzuCommand extends Command {
             .attachFiles([filenames[0]])
             .setColor('#f24724')
             .setImage(`attachment://${rawname}`);
+            console.log(this.watchedIds)
             return message.embed(embed);
         }
 
@@ -126,7 +99,6 @@ module.exports = class KosuzuCommand extends Command {
             .setColor('#f24724')
             .setImage(`attachment://${rawname}`);
             let sent = await message.embed(embed);
-            await sent.react('⬅️');
             await sent.react('➡️');
             this.watchedIds[sent.id] = {file: filenames[0], curr: 1, length: filenames.length};
             const filter = (reaction, user) => false;
