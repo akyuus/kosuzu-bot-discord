@@ -37,9 +37,7 @@ module.exports = class KosuzuCommand extends Command {
                 filename = filename.replace(re, `${imageObject['curr']}-`);
                 reversesplit[0] = filename;
                 reversesplit = reversesplit.reverse();
-                imageObject['file'] = reversesplit.join('/');
-                console.log(filename);
-                let newembed = new MessageEmbed()
+                imageObject['file'] = reversesplit.join('/');                let newembed = new MessageEmbed()
                 .setColor('#f24724')
                 .attachFiles([imageObject['file']])
                 .setImage(`attachment://${filename}`);
@@ -62,7 +60,6 @@ module.exports = class KosuzuCommand extends Command {
     kosuzu(message) {
         let filenames = fs.readdirSync(path.join(__dirname, 'Kosuzus'));
         let filename = filenames[Math.floor(Math.random()*filenames.length)];
-        console.log(filenames);
         if(!filename.includes("-")) {
             return [path.join(__dirname, "Kosuzus/", filename)];
         }
@@ -88,7 +85,6 @@ module.exports = class KosuzuCommand extends Command {
             .attachFiles([filenames[0]])
             .setColor('#f24724')
             .setImage(`attachment://${rawname}`);
-            console.log(this.watchedIds)
             return message.embed(embed);
         }
 
