@@ -1,0 +1,16 @@
+{
+  "name": "kosuzu-bot-discord",
+  "version": "1.0.0",
+  "description": "Discord version of Kosuzu Bot.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "@aakyuu_",
+  "license": "ISC",
+  "dependencies": {
+    "discord.js": "^12.4.1",
+    "discord.js-commando": "github:discordjs/Commando"
+  },
+  "devDependencies": {}
+}
