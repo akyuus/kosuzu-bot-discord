@@ -92,14 +92,14 @@ module.exports = class KosuzuCommand extends Command {
             collector.on('collect', async (reaction, user) => {
 
                 if(reaction.emoji.name === '⬅️') {
-                    counter = (counter - 1) % urls.length;
+                    counter = (counter - 1 + urls.length) % urls.length;
                     embed.setImage(urls[counter]);
                     await sent.edit(undefined, embed);
                 }
                 else {
                     counter = (counter + 1) % urls.length;
                     embed.setImage(urls[counter]);
-                    sent.edit(undefined, embed);
+                    await sent.edit(undefined, embed);
                 }
             });
         }
