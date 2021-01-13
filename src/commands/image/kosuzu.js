@@ -53,7 +53,7 @@ module.exports = class KosuzuCommand extends Command {
             });
 
             return returnobj;
-        }
+            }
         else {
             urlArray.push(res.rows[0].url);
             return returnobj;
@@ -87,7 +87,7 @@ module.exports = class KosuzuCommand extends Command {
             await sent.react('⬅️');
             await sent.react('➡️');
 
-            const collector = sent.createReactionCollector(filter, { time: 20000 });
+            const collector = sent.createReactionCollector(filter, { time: 60000 });
 
             collector.on('collect', async (reaction, user) => {
 
