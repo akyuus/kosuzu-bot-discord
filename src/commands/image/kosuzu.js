@@ -48,7 +48,6 @@ module.exports = class KosuzuCommand extends Command {
             series_res = await dbclient.query(series_text, [name]);
             series_res.rows.forEach(async (row) => {
                 url = row.url;
-                console.log(url);
                 urlArray.push(url);
             });
 
@@ -75,7 +74,6 @@ module.exports = class KosuzuCommand extends Command {
         .setColor('#f24724')
         .setImage(urls[0]);
 
-        console.log(urls);
         if(chapter) {
             embed.setTitle(`Forbidden Scrollery Chapter ${chapter}`);
         }
