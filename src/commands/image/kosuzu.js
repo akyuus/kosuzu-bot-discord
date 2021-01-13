@@ -1,8 +1,11 @@
-const { DiscordAPIError, MessageEmbed } = require('discord.js');
+const { Message, DiscordAPIError, MessageEmbed } = require('discord.js');
 const { Command, CommandoMessage } = require('discord.js-commando');
 const fs = require('fs');
+const { url } = require('inspector');
 const path = require('path');
 const main = require('../../main.js'); 
+const config = require('dotenv').config();
+const { dbclient } = require('../../db.js');
 
 module.exports = class KosuzuCommand extends Command {
     
@@ -14,97 +17,94 @@ module.exports = class KosuzuCommand extends Command {
             description: 'Sends a random image from the Kosuzu collection.'
         });
 
-        this.watchedIds = {};
-        client.on('messageReactionAdd', (messageReaction, user) => {
-            if(user.id === client.user.id) {
-                return;
-            }
-            if(!this.watchedIds[messageReaction.message.id]) {
-                return;
-            }
-
-            let imageObject = this.watchedIds[messageReaction.message.id];
-
-            if(messageReaction.emoji.name === '➡️') {
-                imageObject['curr'] = imageObject['curr']+1;
-                if(imageObject['curr'] === imageObject['length']+1) {
-                    imageObject['curr'] = imageObject['length'];
-                    return;
-                }
-                let reversesplit = imageObject['file'].split("/").reverse();
-                let filename = reversesplit[0];
-                let re = /[0-9]-/;
-                filename = filename.replace(re, `${imageObject['curr']}-`);
-                reversesplit[0] = filename;
-                reversesplit = reversesplit.reverse();
-                imageObject['file'] = reversesplit.join('/');                let newembed = new MessageEmbed()
-                .setColor('#f24724')
-                .attachFiles([imageObject['file']])
-                .setImage(`attachment://${filename}`);
-                messageReaction.message.embed(newembed)
-                .then(async msg => {
-                    this.watchedIds[msg.id] = {file: imageObject['file'], curr: imageObject['curr'], length: imageObject['length']};
-                    await msg.react('➡️');
-                    delete this.watchedIds[messageReaction.message.id];
-                })
-                .catch(console.error);
-            }
-        });
     }
 
     /**
      * 
      * @param {CommandoMessage} message
-     * @returns Returns a filename of the kosuzu. 
+     * @returns Returns a list of urls for a random Kosuzu. 
      */
-    kosuzu(message) {
-        let filenames = fs.readdirSync(path.join(__dirname, 'Kosuzus'));
-        let filename = filenames[Math.floor(Math.random()*filenames.length)];
-        if(!filename.includes("-")) {
-            return [path.join(__dirname, "Kosuzus/", filename)];
+    async kosuzu(message) {
+        let res, series_res, url, name, chapter;
+        let urlArray = [];
+        let returnobj = {
+            chapter: null,
+            urls: urlArray
+        };
+
+        const text = 'SELECT * FROM images OFFSET floor(random() * (SELECT COUNT(*) FROM images)) LIMIT 1';
+        const series_text = `SELECT * FROM images I, seriesinfo S WHERE I.name=$1 AND I.id=S.id ORDER BY num`;
+        
+        try {
+            res = await dbclient.query(text);
+            returnobj.chapter = res.rows[0].chapter;
+        }
+        catch (err) {
+            console.log(err.stack);
+        }
+
+        if(res.rows[0].series) {
+            name = res.rows[0].name;
+            series_res = await dbclient.query(series_text, [name]);
+            series_res.rows.forEach(async (row) => {
+                url = row.url;
+                console.log(url);
+                urlArray.push(url);
+            });
+
+            return returnobj;
         }
         else {
-            let returnList = [];
-            let hyphenIndex = filename.indexOf("-");
-            let range = parseInt(filename.substring(hyphenIndex+1, hyphenIndex+2));
-            
-            for(let i = 1; i <= range; i++) {
-                returnList.push(path.join(__dirname, "Kosuzus/", `${filename.substring(0, hyphenIndex-1)}${i}-${range}.png`));
-            }
-
-            return returnList;
+            urlArray.push(res.rows[0].url);
+            return returnobj;
         }
-
     }
 
+    /**
+     * 
+     * @param {Message} message 
+     */
     async run(message) {
-        let filenames = this.kosuzu(message);
-        if(!filenames[0].substring(filenames[0].length-9).includes("-")) {
-            let rawname = filenames[0].split("/").reverse()[0];
-            let embed = new MessageEmbed()
-            .attachFiles([filenames[0]])
-            .setColor('#f24724')
-            .setImage(`attachment://${rawname}`);
-            return message.embed(embed);
+        const filter = (reaction, user) => {
+            return (reaction.emoji.name === '➡️' || reaction.emoji.name === '⬅️') && user.id === message.author.id;
+        };
+
+        let { chapter, urls } = await this.kosuzu(message);
+        let counter = 0;
+        let embed = new MessageEmbed()
+        .setColor('#f24724')
+        .setImage(urls[0]);
+
+        console.log(urls);
+        if(chapter) {
+            embed.setTitle(`Forbidden Scrollery Chapter ${chapter}`);
         }
 
-        else {
-            let rawname = filenames[0].split("/").reverse()[0];
-            let embed = new MessageEmbed()
-            .attachFiles([filenames[0]])
-            .setColor('#f24724')
-            .setImage(`attachment://${rawname}`);
-            let sent = await message.embed(embed);
+        let sent = await message.embed(embed);
+
+        if(urls.length > 1) {
+            
+            await sent.react('⬅️');
             await sent.react('➡️');
-            this.watchedIds[sent.id] = {file: filenames[0], curr: 1, length: filenames.length};
-            const filter = (reaction, user) => false;
-            sent.awaitReactions(filter, { time: 120000 })
-            .then(collected => {
-                delete this.watchedIds[sent.id];
-            })
-            .catch(console.error);
-            return sent;
+
+            const collector = sent.createReactionCollector(filter, { time: 20000 });
+
+            collector.on('collect', async (reaction, user) => {
+
+                if(reaction.emoji.name === '⬅️') {
+                    counter = (counter - 1) % urls.length;
+                    embed.setImage(urls[counter]);
+                    await sent.edit(undefined, embed);
+                }
+                else {
+                    counter = (counter + 1) % urls.length;
+                    embed.setImage(urls[counter]);
+                    sent.edit(undefined, embed);
+                }
+            });
         }
+
+        return sent;
     }
 
 }
